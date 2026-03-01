@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مختبر تشريح جسم الإنسان 3D</title>
+    
+    <!-- خط تجوال الاحترافي -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #050a0f;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --accent-color: #ff0f39; /* أحمر نيون */
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Tajawal', sans-serif;
+            overflow-x: hidden;
+            /* شريط تمرير ناعم */
+            scroll-behavior: smooth;
+        }
+
+        /* تخصيص شريط التمرير ليصبح احترافياً */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        header {
+            text-align: center;
+            padding: 80px 20px;
+            background: radial-gradient(circle at 50% -20%, #450a18, #0f172a, var(--bg-color));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(circle at 50% 0%, rgba(255, 15, 57, 0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        h1 { 
+            margin: 0; 
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 40%, var(--accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 10px 30px rgba(255, 15, 57, 0.3);
+            position: relative;
+            z-index: 1;
+            margin-bottom: 15px;
+        }
+
+        .description { 
+            color: #cbd5e1; 
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            padding: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .organ-card {
+            background: linear-gradient(145deg, rgba(20, 20, 25, 0.6), rgba(10, 10, 15, 0.4));
+            border: 1px solid rgba(255, 15, 57, 0.3);
+            border-radius: 24px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* تحسين الأداء: تقليل البلور */
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+            /* حل مشكلة التهنيج: عدم رسم العنصر حتى يظهر على الشاشة */
+            content-visibility: auto;
+            contain-intrinsic-size: 400px;
+        }
+
+        .organ-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -80%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+            transform: skewX(-25deg);
+            pointer-events: none;
+        }
+
+        .organ-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--accent-color);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(255, 15, 57, 0.2);
+        }
+
+        .organ-card:hover::before {
+            left: 120%;
+            transition: left 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        /* تنسيق عارض الـ 3D */
+        model-viewer {
+            width: 100%;
+            height: 400px;
+            background-color: transparent;
+            --poster-color: transparent;
+            cursor: grab;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+        
+        /* إظهار الموديل بنعومة عند التحميل */
+        model-viewer.loaded {
+            opacity: 1;
+        }
+
+        model-viewer:active { cursor: grabbing; }
+
+        /* تصميم شاشة التحميل المخصصة */
+        .model-placeholder {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+            border-radius: 16px;
+        }
+
+        .loader-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .title-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 8px 26px;
+            border-radius: 12px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(5px);
+        }
+
+        .status {
+            font-size: 0.8rem;
+            color: #00ff88;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* زر التفاصيل */
+        .details-btn {
+            margin-top: 15px;
+            padding: 10px 24px;
+            background: transparent;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 200px;
+        }
+
+        .details-btn:hover {
+            background: var(--accent-color);
+            color: white;
+            box-shadow: 0 0 15px rgba(255, 15, 57, 0.4);
+        }
+
+        /* تصميم النافذة المنبثقة (Modal) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: #0f172a;
+            border: 1px solid var(--accent-color);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 15, 57, 0.2);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            color: #64748b;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .close-modal:hover { color: white; }
+
+        /* إعدادات الموبايل */
+        @media (max-width: 768px) {
+            .grid-container { grid-template-columns: 1fr; padding: 15px; }
+            model-viewer { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>مختبر التشريح الرقمي</h1>
+        <p class="description">استكشف أعضاء الجسم الحيوية بدقة ثلاثية الأبعاد</p>
+    </header>
+
+    <div class="grid-container">
+        
+        <div class="organ-card">
+            <span class="title-badge">Heart | القلب</span>
+            <model-viewer 
+                src="heart.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.2" 
+                environment-image="neutral"
+                ar-modes="webxr scene-viewer quick-look">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('القلب البشري', 'القلب هو عضو عضلي بحجم قبضة اليد، يضخ الدم عبر شبكة من الأوعية الدموية. ينبض القلب حوالي 100,000 مرة في اليوم.')">عرض التفاصيل الطبية</button>
+        </div>
+
+        <div class="organ-card">
+            <span class="title-badge">Lungs | الرئتين</span>
+            <model-viewer 
+                src="human lungs.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                bounds="tight"
+                shadow-intensity="1" 
+                exposure="1" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('الرئتين', 'الرئتان هما العضوان الرئيسيان في الجهاز التنفسي، وتعملان على استخلاص الأكسجين من الهواء ونقله إلى مجرى الدم.')">عرض التفاصيل الطبية</button>
+        </div>
+
+        <div class="organ-card">
+            <span class="title-badge">Kidney | الكلية</span>
+            <model-viewer 
+                src="human_kidney_anatomy.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('الكلية', 'الكلى هي أعضاء حيوية تقوم بتنقية الدم من الفضلات والسموم، وتلعب دوراً أساسياً في تنظيم ضغط الدم وتوازن السوائل.')">عرض التفاصيل الطبية</button>
+        </div>
+ <!-- __ -->
+   <div class="organ-card">
+            <span class="title-badge">Beating Heart | قلب ينبض</span>
+            <model-viewer 
+                src="beating-heart.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('قلب ينبض', 'محاكاة دقيقة لحركة عضلة القلب أثناء الانقباض والانبساط لضخ الدم إلى جميع أنحاء الجسم.')">عرض التفاصيل الطبية</button>
+        </div>
+        <!-- ____ -->
+          <div class="organ-card">
+            <span class="title-badge">Muscular System | العضلات</span>
+            <model-viewer 
+                src="ecorche_-_anatomy_study.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('الجهاز العضلي', 'يتكون الجهاز العضلي من أكثر من 600 عضلة، وهي المسؤولة عن الحركة والحفاظ على وضعية الجسم.')">عرض التفاصيل الطبية</button>
+        </div>
+        <!-- ____ -->
+          <div class="organ-card">
+            <span class="title-badge">Human Anatomy | تشريح كامل</span>
+            <model-viewer 
+                src="human_anatomy.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('تشريح كامل', 'نظرة شاملة على أجهزة الجسم المختلفة وكيفية ترابطها وتكاملها معاً.')">عرض التفاصيل الطبية</button>
+        </div>
+        <!-- ____ -->
+          <div class="organ-card">
+            <span class="title-badge">Realistic Heart | قلب واقعي</span>
+            <model-viewer 
+                src="human_heart_realistic_anatomical_model.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('قلب واقعي', 'نموذج عالي الدقة يظهر التفاصيل التشريحية الدقيقة للقلب بما في ذلك الشرايين والأوردة.')">عرض التفاصيل الطبية</button>
+            </div>
+<!-- --- -->
+  <div class="organ-card">
+            <span class="title-badge">Heart Model | نموذج قلب</span>
+            <model-viewer 
+                src="another_3d_model_of_the_human_heart..glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('نموذج القلب', 'دراسة تفصيلية لحجرات القلب الأربعة والصمامات التي تنظم تدفق الدم.')">عرض التفاصيل الطبية</button>
+            </div>
+            <!-- ____ --> <div class="organ-card">
+            <span class="title-badge">Male Body | جسم ذكر</span>
+            <model-viewer 
+                src="man_base_mesh.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('جسم الذكر', 'نموذج يوضح البنية العضلية والهيكلية لجسم الذكر.')">عرض التفاصيل الطبية</button>
+            </div>
+                <!-- ---- -->
+                  <div class="organ-card">
+            <span class="title-badge">Pancreas | البنكرياس</span>
+            <model-viewer 
+                src="pancreas.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('البنكرياس', 'غدة تقع خلف المعدة، تفرز الإنزيمات الهاضمة والهرمونات مثل الأنسولين لتنظيم السكر في الدم.')">عرض التفاصيل الطبية</button>
+            </div>
+            <!-- ____ -->
+              <div class="organ-card">
+            <span class="title-badge">Female Body | جسم أنثى</span>
+            <model-viewer 
+                src="realistic_female_base_character_game_ready.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('جسم الأنثى', 'نموذج يوضح التفاصيل التشريحية لجسم الأنثى.')">عرض التفاصيل الطبية</button>
+            </div>
+            <!-- ____ -->
+              <div class="organ-card">
+            <span class="title-badge">Realistic Lungs | رئتين واقعية</span>
+            <model-viewer 
+                src="realistic_human_lungs.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('رئتين واقعية', 'محاكاة لنسيج الرئة والشعب الهوائية بدقة عالية.')">عرض التفاصيل الطبية</button>
+            </div>
+            <!-- --- -->
+     <div class="organ-card">
+            <span class="title-badge">Respiratory | الجهاز التنفسي</span>
+            <model-viewer 
+                src="respiratory_system.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('الجهاز التنفسي', 'نظام متكامل يشمل الأنف، القصبة الهوائية، والرئتين لتبادل الغازات.')">عرض التفاصيل الطبية</button>
+            </div>
+            <!-- -- -->
+              <div class="organ-card">
+            <span class="title-badge">Athletic Body | جسم رياضي</span>
+            <model-viewer 
+                src="sport_girl.glb" 
+                loading="lazy"
+                camera-controls 
+                auto-rotate 
+                rotation-per-second="30deg"
+                auto-rotate-delay="0"
+                shadow-intensity="1" 
+                exposure="1.3" 
+                environment-image="neutral">
+            </model-viewer>
+            <div class="status">جاهز للعرض</div>
+            <button class="details-btn" onclick="openModal('جسم رياضي', 'يوضح تأثير الرياضة على الكتلة العضلية وتناسق الجسم.')">عرض التفاصيل الطبية</button>
+        </div>
+        </div>
+
+    <!-- هيكل النافذة المنبثقة -->
+    <div class="modal-overlay" id="infoModal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal(event)">&times;</span>
+            <h2 id="modalTitle" style="color: var(--accent-color); margin-top: 0;">عنوان العضو</h2>
+            <p id="modalDesc" style="color: #cbd5e1; line-height: 1.6;">وصف تفصيلي للعضو...</p>
+            <button class="details-btn" onclick="closeModal(event)" style="width: auto; margin-top: 20px;">إغلاق</button>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 40px; color: #64748b; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 50px;">
+        <p>جميع الحقوق محفوظة &copy; 2023 | مختبر التشريح الرقمي</p>
+    </footer>
+
+    <script>
+        // كود جافاسكريبت احترافي لتحسين الأداء وإضافة شاشات التحميل تلقائياً
+        document.querySelectorAll('model-viewer').forEach((model) => {
+            // إنشاء عنصر التحميل (Poster) برمجياً لضمان نظافة الكود
+            const poster = document.createElement('div');
+            poster.className = 'model-placeholder';
+            poster.setAttribute('slot', 'poster');
+            poster.innerHTML = '<div class="loader-spinner"></div><span style="font-size:0.8rem; opacity:0.7">جاري التحميل...</span>';
+            model.appendChild(poster);
+
+            // إضافة كلاس عند اكتمال التحميل لإظهار المجسم بنعومة
+            model.addEventListener('load', () => {
+                model.classList.add('loaded');
+            });
+        });
+
+        // دوال التحكم في النافذة المنبثقة
+        function openModal(title, desc) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalDesc').innerText = desc;
+            document.getElementById('infoModal').classList.add('active');
+        }
+
+        function closeModal(event) {
+            // التأكد من أن النقر تم على الخلفية أو زر الإغلاق
+            if (event.target.classList.contains('modal-overlay') || event.target.classList.contains('close-modal') || event.target.tagName === 'BUTTON') {
+                document.getElementById('infoModal').classList.remove('active');
+            }
+        }
+    </script>
+
+</body>
+</html>
